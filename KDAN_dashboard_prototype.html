@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<title>KDAN 費用執行 Dashboard — Prototype</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    /* KDAN brand palette */
+    --bg-0: #001a20;          /* deeper than Reliable Green for body */
+    --bg-1: #002D37;          /* Reliable Green - card background */
+    --bg-2: #0a3d47;          /* hover / subtle */
+    --border: #1a4d57;
+    --text-0: #ffffff;
+    --text-1: #a8c4ca;
+    --text-2: #6b8a8f;
+    --accent: #00DC87;        /* Intelligent Green - primary positive */
+    --danger: #FF32AF;        /* Creative Pink as danger (high contrast on dark green) */
+    --warning: #FF6400;       /* Energetic Orange */
+    --info: #00D2E6;          /* Forward Blue */
+    --purple: #6950FF;        /* Agility Purple */
+    --pink: #FF32AF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-0);
+    color: var(--text-0);
+    font-family: 'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  
+  /* Header */
+  header {
+    background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--info));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .logo-text { font-weight: 600; font-size: 16px; letter-spacing: 0.3px; }
+  .logo-sub { color: var(--text-2); font-size: 11px; margin-top: 2px; }
+  
+  .meta { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--text-1); }
+  .meta-item { display: flex; align-items: center; gap: 6px; }
+  .meta-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-top: 16px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .tabs::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .tab {
+    background: none;
+    border: none;
+    color: var(--text-1);
+    padding: 10px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab:hover { color: var(--text-0); background: var(--bg-2); }
+  .tab.active {
+    color: var(--text-0);
+    border-bottom-color: var(--info);
+    background: var(--bg-1);
+  }
+  .tab-icon { font-size: 14px; }
+  
+  /* Main */
+  main { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+  
+  .page { display: none; animation: fade 0.3s; }
+  .page.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .section-title {
+    font-size: 11px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--info);
+  }
+  .kpi-card.danger::before { background: var(--danger); }
+  .kpi-card.warning::before { background: var(--warning); }
+  .kpi-card.good::before { background: var(--accent); }
+  
+  .kpi-label { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .kpi-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kpi-currency { font-size: 11px; color: var(--text-2); margin-left: 6px; font-weight: 400; }
+  .kpi-deltas { display: flex; gap: 14px; margin-top: 10px; font-size: 12px; }
+  .delta-item { display: flex; flex-direction: column; gap: 2px; }
+  .delta-label { color: var(--text-2); font-size: 10px; }
+  .delta-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .delta-value.up { color: var(--accent); }
+  .delta-value.down { color: var(--danger); }
+  .delta-value.flat { color: var(--text-1); }
+  
+  /* Status Lights */
+  .lights-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .light-card {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .light-orb {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px currentColor;
+  }
+  .light-orb.green { background: var(--accent); color: var(--accent); }
+  .light-orb.yellow { background: var(--warning); color: var(--warning); }
+  .light-orb.red { background: var(--danger); color: var(--danger); }
+  .light-info { flex: 1; }
+  .light-company { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .light-detail { font-size: 11px; color: var(--text-1); }
+  
+  /* Charts grid */
+  .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .grid-1 { margin-bottom: 24px; }
+  
+  .panel {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .panel-title { font-size: 14px; font-weight: 600; }
+  .panel-sub { font-size: 11px; color: var(--text-2); }
+  .chart-wrap { position: relative; height: 280px; }
+  
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  th {
+    text-align: left;
+    color: var(--text-2);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 12px 8px;
+    border-bottom: 1px solid rgba(42, 51, 73, 0.4);
+    font-variant-numeric: tabular-nums;
+  }
+  tr:hover td { background: rgba(59, 130, 246, 0.04); }
+  td.num { text-align: right; }
+  td.pct.up { color: var(--accent); }
+  td.pct.down { color: var(--danger); }
+  
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tag.onetime { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
+  .tag.tracking { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+  .tag.alert { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+  .tag.good { background: rgba(74, 222, 128, 0.15); color: var(--accent); }
+  
+  .note { font-size: 11px; color: var(--text-1); line-height: 1.4; }
+  
+  /* Filter bar (BU page) */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  .filter-label { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 1px; }
+  select {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-0);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  
+  /* Highlights box */
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(167, 139, 250, 0.04));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .highlight-box.danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.04));
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  .highlight-title {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .highlight-body { font-size: 12px; color: var(--text-1); line-height: 1.6; }
+  
+  /* Footer */
+  footer {
+    padding: 20px 24px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-2);
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+  
+  /* Mobile */
+  @media (max-width: 768px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    header { padding: 12px 16px; }
+    .kpi-value { font-size: 20px; }
+    .tabs { overflow-x: auto; white-space: nowrap; }
+    .tab { padding: 8px 12px; font-size: 12px; }
+    .meta { font-size: 11px; }
+    .panel { padding: 14px; }
+  }
+  
+  /* Demo badge */
+  .demo-badge {
+    background: var(--warning);
+    color: var(--bg-0);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  tr.expanded td { background: rgba(59, 130, 246, 0.06); }
+  tr.drillable { cursor: pointer; }
+  tr.drillable:hover td { background: rgba(59, 130, 246, 0.08); }
+  .drill-hint { font-size: 10px; color: var(--text-2); margin-left: 6px; opacity: 0.6; }
+  tr.drillable:hover .drill-hint { opacity: 1; color: var(--info); }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-mark">K</div>
+      <div>
+        <div class="logo-text">KDAN 費用執行 Dashboard <span class="demo-badge">PROTOTYPE</span></div>
+        <div class="logo-sub">Driving Digital Innovation for the Future · Multi-entity OPEX · 2026/04</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="meta-item"><span class="meta-dot"></span>Data synced 2026/05/20</div>
+      <div class="meta-item">📁 5 entities · 11 source files</div>
+      <div class="meta-item">🌐 集團透明 Open</div>
+      <div class="meta-item">⚠️ 長沙 Y2025 budget</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('exec', this)"><span class="tab-icon">📊</span>高階摘要 Executive</button>
+    <button class="tab" onclick="showPage('bu', this)"><span class="tab-icon">🎯</span>BU Dashboard</button>
+    <button class="tab" onclick="showPage('fin', this)"><span class="tab-icon">📑</span>財務總覽 Finance Detail</button>
+  </div>
+</header>
+
+<main>
+
+<!-- =================== Executive Summary =================== -->
+<section id="page-exec" class="page active">
+  
+  <div class="section-title">集團整體 · Group Operating Loss (NTD-equivalent)</div>
+  <div class="kpi-grid">
+    <div class="kpi-card danger">
+      <div class="kpi-label">本月營業損益 · MTD Operating Income</div>
+      <div class="kpi-value">-8.6M<span class="kpi-currency">NTD eq.</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">vs Mar (MoM)</span><span class="delta-value down">-12.4%</span></div>
+        <div class="delta-item"><span class="delta-label">vs Apr-25 (YoY)</span><span class="delta-value up">+9.6%</span></div>
+      </div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-label">累積損益 · YTD Operating Income</div>
+      <div class="kpi-value">-39.5M<span class="kpi-currency">NTD eq.</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">vs YTD-25</span><span class="delta-value up">+14.2%</span></div>
+        <div class="delta-item"><span class="delta-label">vs Budget</span><span class="delta-value down">-3.1%</span></div>
+      </div>
+    </div>
+    <div class="kpi-card good">
+      <div class="kpi-label">營業費用 · MTD OPEX</div>
+      <div class="kpi-value">31.5M<span class="kpi-currency">NTD eq.</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">vs Mar (MoM)</span><span class="delta-value up">-2.8%</span></div>
+        <div class="delta-item"><span class="delta-label">vs Apr-25 (YoY)</span><span class="delta-value up">-8.5%</span></div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">紅燈科目 · Red-light items</div>
+      <div class="kpi-value">7<span class="kpi-currency">accounts</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">一次性 One-off</span><span class="delta-value flat">4</span></div>
+        <div class="delta-item"><span class="delta-label">需追蹤 Track</span><span class="delta-value down">3</span></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="section-title">各公司紅綠燈狀態 · Entity Status Lights</div>
+  <div class="lights-row">
+    <div class="light-card"><div class="light-orb yellow"></div><div class="light-info">
+      <div class="light-company">部門 / 台灣 HQ</div>
+      <div class="light-detail">營益 -8.5M NTD · MoM -16.5% · YoY +6.1% · 4 紅燈科目</div>
+    </div></div>
+    <div class="light-card"><div class="light-orb red"></div><div class="light-info">
+      <div class="light-company">日本 Japan</div>
+      <div class="light-detail">營益 -4.8M JPY · MoM -62.6% · 一次性勞務費入帳</div>
+    </div></div>
+    <div class="light-card"><div class="light-orb yellow"></div><div class="light-info">
+      <div class="light-company">長沙 Changsha ⚠️</div>
+      <div class="light-detail">營益 -127K RMB · 仍用 Y2025 預算 · 薪資雙降待確認</div>
+    </div></div>
+    <div class="light-card"><div class="light-orb green"></div><div class="light-info">
+      <div class="light-company">美國 USA</div>
+      <div class="light-detail">營益 -1.9K USD · 接近損平 · MoM +88.4%</div>
+    </div></div>
+    <div class="light-card"><div class="light-orb yellow"></div><div class="light-info">
+      <div class="light-company">新加坡 Singapore</div>
+      <div class="light-detail">營益 -20K SGD · 會計師費單筆入帳</div>
+    </div></div>
+  </div>
+  
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">集團營業損益月度趨勢 · Group Op-Income Trend</div>
+          <div class="panel-sub">2026/01 - 2026/04 · NTD-equivalent</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartGroupTrend"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">各公司 OPEX 占比 · OPEX Share</div>
+          <div class="panel-sub">2026/04 · MTD</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartShare"></canvas></div>
+    </div>
+  </div>
+  
+  <div class="section-title">本月關鍵波動 Top 5 · Material Variances</div>
+  <div class="panel" style="padding: 8px 0;">
+    <table>
+      <thead><tr>
+        <th style="padding-left: 20px;">公司</th><th>科目 Account</th><th class="num">3月</th><th class="num">4月</th>
+        <th class="num">差異 Δ</th><th class="num">MoM%</th><th>標記</th><th>原因 Reason</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td style="padding-left: 20px;"><strong>日本</strong></td>
+          <td>6135 銷售-勞務費 <span style="color:var(--text-2)">Service fee</span></td>
+          <td class="num">772,000</td><td class="num">1,860,000</td>
+          <td class="num" style="color:var(--danger)">+1,088,000</td>
+          <td class="num pct down">+141%</td>
+          <td><span class="tag onetime">一次性</span></td>
+          <td class="note">年度勞務費 1.8M JPY 一次入帳</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 20px;"><strong>部門</strong></td>
+          <td>5817 製造-廣告費 <span style="color:var(--text-2)">Ad expense</span></td>
+          <td class="num">4,791,635</td><td class="num">3,287,852</td>
+          <td class="num" style="color:var(--accent)">-1,503,783</td>
+          <td class="num pct up">-31%</td>
+          <td><span class="tag good">改善</span></td>
+          <td class="note">Document BU 縮減 Google On/Off-line 投放</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 20px;"><strong>部門</strong></td>
+          <td>6235 管理-勞務費 <span style="color:var(--text-2)">Mgmt service</span></td>
+          <td class="num">668,790</td><td class="num">1,133,369</td>
+          <td class="num" style="color:var(--danger)">+464,579</td>
+          <td class="num pct down">+70%</td>
+          <td><span class="tag onetime">一次性</span></td>
+          <td class="note">IPO 顧問費 + 法說會 + 北辦裝修</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 20px;"><strong>長沙</strong></td>
+          <td>6210 管理-薪資 <span style="color:var(--text-2)">Mgmt salary</span></td>
+          <td class="num">200,987</td><td class="num">95,437</td>
+          <td class="num" style="color:var(--accent)">-105,549</td>
+          <td class="num pct up">-52%</td>
+          <td><span class="tag tracking">追蹤</span></td>
+          <td class="note">⚠ 待確認:離職、調崗或獎金時點</td>
+        </tr>
+        <tr>
+          <td style="padding-left: 20px;"><strong>日本</strong></td>
+          <td>6110 銷售-薪資 <span style="color:var(--text-2)">Sales salary</span></td>
+          <td class="num">1,513,863</td><td class="num">2,010,262</td>
+          <td class="num" style="color:var(--danger)">+496,399</td>
+          <td class="num pct down">+33%</td>
+          <td><span class="tag tracking">追蹤</span></td>
+          <td class="note">新進員工 / 調薪生效</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div style="margin-top: 20px;">
+    <div class="highlight-box">
+      <div class="highlight-title">📌 Executive Take · 本月觀察</div>
+      <div class="highlight-body">
+        集團 4 月營業損失 -8.6M (NTD eq.) 較 3 月擴大 16%,但 YoY 已改善 +9.6%。<strong>日本</strong>的單月惡化主要來自年度勞務費一次性入帳(扣除後實際 MoM 約 -10%);<strong>部門 HQ</strong> Document BU 廣告費控管有成,但被 IPO/法說會/裝修等一次性管理費抵銷。
+        <strong>長沙</strong>薪資雙降需 HR 確認後再判讀。整體方向尚屬合理,需追蹤項目共 3 件已列入後續事項。
+      </div>
+    </div>
+    <div class="highlight-box danger">
+      <div class="highlight-title">⚠️ Risk Flag · 風險提醒</div>
+      <div class="highlight-body">
+        長沙費用分析表 2026/04 版本仍掛 <strong>Y2025 budget</strong>,跨期比較與預算達成率分析失真;建議下週前完成 Y2026 預算切換。本報告中含 [INTERNAL] 級資料,經 KDAN 各部門 lead 審閱後始可外部分享。
+      </div>
+    </div>
+  </div>
+  
+</section>
+
+<!-- =================== BU Dashboard =================== -->
+<section id="page-bu" class="page">
+  
+  <div style="background:linear-gradient(135deg, rgba(59,130,246,0.08), rgba(167,139,250,0.04)); border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:10px 16px; margin-bottom:16px; font-size:12px; color:var(--text-1);">💡 點任一筆明細列展開 BU/品項細項 (示意:本原型只開放紅黃燈科目展開)</div>
+  <div class="filter-bar">
+    <span class="filter-label">View as · 視角切換</span>
+    <select onchange="switchBU(this.value)">
+      <option value="DA00">DA00 · BU1 文件應用事業群 (Document)</option>
+      <option value="WF00">WF00 · BU2 數位化企業流程事業群 (Workflow)</option>
+      <option value="NB00">NB00 · BU3 數據應用事業群 (Data)</option>
+      <option value="TR00">TR00 · 台灣業務中心 (Taiwan Sales)</option>
+      <option value="RR00">RR00 · 技術研發中心 (R&amp;D)</option>
+      <option value="MM00">MM00 · 集團品牌行銷中心 (Marketing)</option>
+      <option value="AA00">AA00 · 行政管理中心 (Admin)</option>
+    </select>
+    <span style="color:var(--text-2); font-size:11px; margin-left:auto;">🌐 集團內透明 · 可自由切換查看 · Open to all entities</span>
+  </div>
+  
+  <div class="section-title">BU1 · DA00 文件應用事業群 (Document) · 2026/04 核心指標</div>
+  <div class="kpi-grid">
+    <div class="kpi-card good">
+      <div class="kpi-label">本月費用實際 · MTD Actual</div>
+      <div class="kpi-value">5.62M<span class="kpi-currency">NTD</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">vs 預算 Budget</span><span class="delta-value up">-12.3%</span></div>
+        <div class="delta-item"><span class="delta-label">達成率</span><span class="delta-value">87.7%</span></div>
+      </div>
+    </div>
+    <div class="kpi-card good">
+      <div class="kpi-label">廣告費 · Advertising</div>
+      <div class="kpi-value">3.29M<span class="kpi-currency">NTD</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">vs Mar (MoM)</span><span class="delta-value up">-31.4%</span></div>
+        <div class="delta-item"><span class="delta-label">YoY</span><span class="delta-value up">-22.5%</span></div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">人事成本 · Personnel</div>
+      <div class="kpi-value">1.85M<span class="kpi-currency">NTD</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">vs Mar</span><span class="delta-value flat">+0.8%</span></div>
+        <div class="delta-item"><span class="delta-label">vs Budget</span><span class="delta-value">在範圍內</span></div>
+      </div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-label">紅黃燈科目 · Watch Items</div>
+      <div class="kpi-value">2<span class="kpi-currency">accounts</span></div>
+      <div class="kpi-deltas">
+        <div class="delta-item"><span class="delta-label">🟡 黃燈</span><span class="delta-value flat">2</span></div>
+        <div class="delta-item"><span class="delta-label">🔴 紅燈</span><span class="delta-value flat">0</span></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">近 6 個月費用趨勢 · 6-Month Trend</div>
+          <div class="panel-sub">NB10 by 科目大類 · NTD</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartBUTrend"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">4 月費用結構 · Cost Breakdown</div>
+          <div class="panel-sub">NB10 · 2026/04</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartBUBreak"></canvas></div>
+    </div>
+  </div>
+  
+  <div class="section-title">本月主要波動科目 · Material Variances · BU1 文件應用事業群</div>
+  <div class="panel" style="padding: 8px 0;">
+    <table>
+      <thead><tr>
+        <th style="padding-left:20px">科目 Account</th>
+        <th class="num">3月</th><th class="num">4月</th><th class="num">MoM%</th>
+        <th>狀態</th><th>說明 · 一句話</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td style="padding-left:20px"><strong>廣告費</strong> <span style="color:var(--text-2)">Advertising · 5817</span></td>
+          <td class="num">4,791,635</td><td class="num">3,287,852</td>
+          <td class="num pct up">-31.4%</td>
+          <td><span class="tag good">✅ 在預算內</span></td>
+          <td class="note">Google 媒體投放 -81 萬、Off-line 廣告 -69 萬,符合 Q2 縮減計畫</td>
+        </tr>
+        <tr>
+          <td style="padding-left:20px"><strong>廣告專案勞務費</strong> <span style="color:var(--text-2)">Service · 5835</span></td>
+          <td class="num">352,500</td><td class="num">27,500</td>
+          <td class="num pct up">-92.2%</td>
+          <td><span class="tag onetime">一次性結束</span></td>
+          <td class="note">前月一次性專案已結束,本月無新增</td>
+        </tr>
+        <tr>
+          <td style="padding-left:20px"><strong>銷售廣告費</strong> <span style="color:var(--text-2)">Sales ad · 6117</span></td>
+          <td class="num">1,548,665</td><td class="num">1,111,079</td>
+          <td class="num pct up">-28.3%</td>
+          <td><span class="tag tracking">🟡 重分類</span></td>
+          <td class="note">WF00 出現 -32.7 萬負數,WF20 +42.5 萬;BU 間重分類需財務確認</td>
+        </tr>
+        <tr>
+          <td style="padding-left:20px"><strong>製造薪資</strong> <span style="color:var(--text-2)">Mfg salary · 5810</span></td>
+          <td class="num">547,398</td><td class="num">668,395</td>
+          <td class="num pct down">+22.1%</td>
+          <td><span class="tag tracking">🟡 追蹤</span></td>
+          <td class="note">績效獎金 9.9 萬本月入帳;後續月份應回穩</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div class="highlight-box" style="margin-top: 20px;">
+    <div class="highlight-title">🎯 給 BU Lead · Action Items</div>
+    <div class="highlight-body">
+      Q2 廣告控管成效已顯現,Google On-line 預計 5 月再下調 10%;但需與財務確認 6117 BU 間重分類紀錄,避免雙重計算。下月可重點觀察:
+      <strong>新進 PM 薪資</strong>(預計 +15 萬)、<strong>WWDC 參展費</strong>(預計 60 萬 USD-NTD eq.,屬一次性)。
+    </div>
+  </div>
+  
+</section>
+
+<!-- =================== Finance Detail =================== -->
+<section id="page-fin" class="page">
+  
+  <div class="filter-bar">
+    <span class="filter-label">Filter</span>
+    <select><option>全部公司 All entities</option><option>部門/台灣</option><option>日本</option><option>長沙</option><option>美國</option><option>新加坡</option></select>
+    <select><option>2026/04</option><option>2026/03</option><option>2026/02</option><option>2026/01</option></select>
+    <select><option>全部科目大類</option><option>5 營業成本</option><option>6 營業費用</option><option>6100 推銷</option><option>6200 管理</option><option>6300 研發</option></select>
+    <select><option>波動 ≥ 20%</option><option>全部</option><option>≥ 50%</option><option>紅黃燈</option></select>
+  </div>
+  
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">資料筆數 · Records</div>
+      <div class="kpi-value">1,847</div>
+      <div class="kpi-deltas"><div class="delta-item"><span class="delta-label">across</span><span class="delta-value">5 entities</span></div></div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-label">波動 ≥ 20% 科目</div>
+      <div class="kpi-value">47</div>
+      <div class="kpi-deltas"><div class="delta-item"><span class="delta-label">紅燈</span><span class="delta-value down">7</span></div><div class="delta-item"><span class="delta-label">黃燈</span><span class="delta-value flat">40</span></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">已填異常原因 · Annotated</div>
+      <div class="kpi-value">38 / 47</div>
+      <div class="kpi-deltas"><div class="delta-item"><span class="delta-label">完成率</span><span class="delta-value">80.9%</span></div></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">追蹤事項 · Open items</div>
+      <div class="kpi-value">10</div>
+      <div class="kpi-deltas"><div class="delta-item"><span class="delta-label">待 HR 確認</span><span class="delta-value">3</span></div><div class="delta-item"><span class="delta-label">待主管核</span><span class="delta-value">2</span></div></div>
+    </div>
+  </div>
+  
+  <div class="grid-1">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">5 公司 4 月損益 YoY 對比 · YoY by Entity</div>
+          <div class="panel-sub">2026/04 vs 2025/04 · 營業利益 Operating Income (當地幣別 local currency)</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height: 320px;"><canvas id="chartYoY"></canvas></div>
+    </div>
+  </div>
+  
+  <div class="section-title">完整明細表 · Full Detail (示意 sample rows)</div>
+  <div class="panel" style="padding: 8px 0;">
+    <table>
+      <thead><tr>
+        <th style="padding-left:20px">公司</th><th>BU</th><th>科目編號</th><th>科目名稱</th>
+        <th class="num">3月</th><th class="num">4月</th><th class="num">MoM%</th><th class="num">YoY%</th>
+        <th>標記</th><th>原因</th>
+      </tr></thead>
+      <tbody>
+        <tr class="drillable" onclick="toggleDrillDown(this, '部門', '5817')"><td style="padding-left:20px">部門 <span class="drill-hint">▾ click</span></td><td>NB10 <span style="color:var(--text-2);font-size:10px">業務開發部</span></td><td>5817</td><td>製造-廣告費</td><td class="num">4,791,635</td><td class="num">3,287,852</td><td class="num pct up">-31.4%</td><td class="num pct up">-22.5%</td><td><span class="tag good">改善</span></td><td class="note">Document BU 廣告縮減</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '部門', '6235')"><td style="padding-left:20px">部門 <span class="drill-hint">▾ click</span></td><td>KA20 <span style="color:var(--text-2);font-size:10px">財務管理部</span></td><td>6235</td><td>管理-勞務費</td><td class="num">668,790</td><td class="num">1,133,369</td><td class="num pct down">+69.5%</td><td class="num pct down">+45.2%</td><td><span class="tag onetime">一次性</span></td><td class="note">IPO + 法說會 + 北辦裝修</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '部門', '5835')"><td style="padding-left:20px">部門 <span class="drill-hint">▾ click</span></td><td>NB10 <span style="color:var(--text-2);font-size:10px">業務開發部</span></td><td>5835</td><td>製造-勞務費</td><td class="num">352,500</td><td class="num">27,500</td><td class="num pct up">-92.2%</td><td class="num pct up">-89.1%</td><td><span class="tag onetime">結束</span></td><td class="note">前月專案結束</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '部門', '6113')"><td style="padding-left:20px">部門 <span class="drill-hint">▾ click</span></td><td>UU00 <span style="color:var(--text-2);font-size:10px">美國子公司</span></td><td>6113</td><td>銷售-旅費</td><td class="num">32,306</td><td class="num">286,392</td><td class="num pct down">+786%</td><td class="num pct down">+412%</td><td><span class="tag alert">⚠ 異常</span></td><td class="note">美國子公司高階主管出差 16.2 萬</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '日本', '6135')"><td style="padding-left:20px">日本 <span class="drill-hint">▾ click</span></td><td>JP00 <span style="color:var(--text-2);font-size:10px">日本子公司</span></td><td>6135</td><td>銷售-勞務費</td><td class="num">772,000</td><td class="num">1,860,000</td><td class="num pct down">+141%</td><td class="num pct down">+82%</td><td><span class="tag onetime">年度認列</span></td><td class="note">年度勞務費 1.8M JPY 4 月一次入帳</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '日本', '6110')"><td style="padding-left:20px">日本 <span class="drill-hint">▾ click</span></td><td>JP00 <span style="color:var(--text-2);font-size:10px">日本子公司</span></td><td>6110</td><td>銷售-薪資</td><td class="num">1,513,863</td><td class="num">2,010,262</td><td class="num pct down">+32.8%</td><td class="num pct down">+18.4%</td><td><span class="tag tracking">追蹤</span></td><td class="note">新進員工 / 調薪生效</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '長沙', '6210')"><td style="padding-left:20px">長沙 <span class="drill-hint">▾ click</span></td><td>CC00 <span style="color:var(--text-2);font-size:10px">長沙子公司</span></td><td>6210</td><td>管理-薪資</td><td class="num">200,987</td><td class="num">95,437</td><td class="num pct up">-52.5%</td><td class="num pct up">-41.2%</td><td><span class="tag alert">⚠ 待確認</span></td><td class="note">待 HR 釐清離職/調崗/獎金時點</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '長沙', '6111')"><td style="padding-left:20px">長沙 <span class="drill-hint">▾ click</span></td><td>CC00 <span style="color:var(--text-2);font-size:10px">長沙子公司</span></td><td>6111</td><td>銷售-租金</td><td class="num">-120,586</td><td class="num">60,293</td><td class="num pct down">N/A</td><td class="num pct flat">-5.1%</td><td><span class="tag tracking">沖回</span></td><td class="note">前期應計沖回轉正</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '美國', '6232')"><td style="padding-left:20px">美國 <span class="drill-hint">▾ click</span></td><td>UU00 <span style="color:var(--text-2);font-size:10px">美國子公司</span></td><td>6232</td><td>管理-網路服務費</td><td class="num">11,191</td><td class="num">199</td><td class="num pct up">-98.2%</td><td class="num pct up">-95.1%</td><td><span class="tag onetime">年費</span></td><td class="note">AWIN 年費 3 月一次認列</td></tr>
+        <tr class="drillable" onclick="toggleDrillDown(this, '新加坡', '6235')"><td style="padding-left:20px">新加坡 <span class="drill-hint">▾ click</span></td><td>SG00 <span style="color:var(--text-2);font-size:10px">新加坡子公司</span></td><td>6235</td><td>管理-勞務費</td><td class="num">593</td><td class="num">13,592</td><td class="num pct down">+2,192%</td><td class="num pct down">+158%</td><td><span class="tag onetime">季度</span></td><td class="note">會計師費季度單筆入帳</td></tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div class="note" style="margin-top: 20px; text-align: center; color: var(--text-2);">
+    完整版顯示全部 1,847 筆 · 可依公司、科目大類、月份、波動門檻下鑽 · Click any row to drill down
+  </div>
+  
+</section>
+
+</main>
+
+<footer>
+  <div>KDAN Mobile Software · Internal Use Only · 集團內透明 · 此為 Looker Studio Dashboard 原型</div>
+  <div style="margin-top:4px;color:var(--accent);">組織對照:BU1=DA00 文件應用 · BU2=WF00 數位化企業流程 · BU3=NB00 數據應用 · 依 KDAN 組織圖 v11.00001 (生效 2026/01/01)</div>
+  <div style="margin-top: 4px;">📅 Generated 2026/05/20 · Prepared by Finance · Refresh frequency: monthly</div>
+</footer>
+
+<script>
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+function switchBU(bu) {
+  // Demo only - 實際 Looker Studio 會用 Filter by Email 自動切換
+}
+
+// Chart styling
+Chart.defaults.color = '#a8c4ca';
+Chart.defaults.font.family = 'Inter, "Noto Sans TC", -apple-system, sans-serif';
+Chart.defaults.font.size = 11;
+Chart.defaults.borderColor = '#1a4d57';
+
+const colorPalette = {
+  blue: '#00D2E6',     // Forward Blue
+  green: '#00DC87',    // Intelligent Green
+  red: '#FF32AF',      // Creative Pink (used as danger on dark green)
+  yellow: '#FF6400',   // Energetic Orange
+  purple: '#6950FF',   // Agility Purple
+  cyan: '#C8FF00'      // Active Lime Green
+};
+
+// === Group Op-Income Trend (Executive) ===
+new Chart(document.getElementById('chartGroupTrend'), {
+  type: 'line',
+  data: {
+    labels: ['2026/01', '2026/02', '2026/03', '2026/04'],
+    datasets: [
+      { label: '部門/台灣', data: [-13.4, -11.0, -7.3, -8.5], borderColor: colorPalette.blue, backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.35, fill: false, borderWidth: 2 },
+      { label: '日本 (NTD eq.)', data: [-1.5, -1.0, -0.7, -1.1], borderColor: colorPalette.purple, tension: 0.35, fill: false, borderWidth: 2 },
+      { label: '長沙 (NTD eq.)', data: [-0.5, -0.4, -1.3, -0.6], borderColor: colorPalette.cyan, tension: 0.35, fill: false, borderWidth: 2 },
+      { label: '美國 (NTD eq.)', data: [-0.6, -0.4, -0.5, -0.06], borderColor: colorPalette.green, tension: 0.35, fill: false, borderWidth: 2 },
+      { label: '新加坡 (NTD eq.)', data: [-0.4, -0.1, -0.2, -0.5], borderColor: colorPalette.yellow, tension: 0.35, fill: false, borderWidth: 2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } },
+    scales: {
+      y: { grid: { color: 'rgba(26,77,87,0.4)' }, ticks: { callback: v => v + 'M' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// === Entity Share (Executive) ===
+new Chart(document.getElementById('chartShare'), {
+  type: 'doughnut',
+  data: {
+    labels: ['部門/台灣 71%', '日本 16%', '長沙 8%', '美國 3%', '新加坡 2%'],
+    datasets: [{
+      data: [22.6, 5.2, 2.5, 0.9, 0.7],
+      backgroundColor: [colorPalette.blue, colorPalette.purple, colorPalette.cyan, colorPalette.green, colorPalette.yellow],
+      borderColor: '#002D37', borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 11 } } } },
+    cutout: '60%'
+  }
+});
+
+// === BU Trend (BU page) ===
+new Chart(document.getElementById('chartBUTrend'), {
+  type: 'line',
+  data: {
+    labels: ['2025/11', '2025/12', '2026/01', '2026/02', '2026/03', '2026/04'],
+    datasets: [
+      { label: '廣告 Advertising', data: [5.2, 4.8, 5.1, 4.6, 4.79, 3.29], borderColor: colorPalette.red, backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.3, fill: true },
+      { label: '人事 Personnel', data: [1.7, 1.7, 1.6, 1.8, 1.83, 1.85], borderColor: colorPalette.blue, backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: true },
+      { label: '勞務 Service', data: [0.4, 0.3, 0.5, 0.4, 0.35, 0.03], borderColor: colorPalette.yellow, backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.3, fill: true }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } },
+    scales: {
+      y: { grid: { color: 'rgba(26,77,87,0.4)' }, ticks: { callback: v => v + 'M' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// === BU Cost Breakdown (BU page) ===
+new Chart(document.getElementById('chartBUBreak'), {
+  type: 'bar',
+  data: {
+    labels: ['廣告', '人事', '勞務', '差旅', '租金', '其他'],
+    datasets: [
+      { label: '3月', data: [4.79, 1.83, 0.35, 0.43, 0.35, 0.5], backgroundColor: 'rgba(167,139,250,0.5)' },
+      { label: '4月', data: [3.29, 1.85, 0.03, 0.26, 0.35, 0.45], backgroundColor: colorPalette.blue }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } },
+    scales: {
+      y: { grid: { color: 'rgba(26,77,87,0.4)' }, ticks: { callback: v => v + 'M' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// === YoY chart (Finance) ===
+new Chart(document.getElementById('chartYoY'), {
+  type: 'bar',
+  data: {
+    labels: ['部門/台灣 (NTD)', '日本 (JPY)', '長沙 (RMB)', '美國 (USD)', '新加坡 (SGD)'],
+    datasets: [
+      { label: '2025/04 營業損益', data: [-9066487, -6720892, -93668, -11622, -36229], backgroundColor: 'rgba(167,139,250,0.6)' },
+      { label: '2026/04 營業損益', data: [-8513759, -4830418, -126726, -1931, -19550], backgroundColor: colorPalette.blue }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } },
+      tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + c.parsed.x.toLocaleString() } }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(26,77,87,0.4)' }, ticks: { callback: v => (v/1000).toFixed(0) + 'K' } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+
+// BU 代碼 → 部門名稱對照表 (從 KDAN 組織圖 2026/01/01 v11)
+const BU_MAP = {"DA00": "文件應用事業群", "WF00": "數位化企業流程事業群", "NB00": "數據應用事業群", "DA10": "產品策略與管理部", "DA20": "產品行銷部", "DA60": "產品技術暨開發部", "WF10": "產品管理部", "WF20": "產品行銷部", "WF30": "商務成功部", "WF40": "產品開發部", "WF50": "品保客服部", "NB10": "業務開發部", "NB40": "數據服務部", "NB60": "企劃策略部", "NB80": "營運事業部", "NB90": "成效營運部", "TR00": "台灣業務中心", "TR10": "業務開發部", "TR20": "客戶成功與解決方案部", "RR00": "技術研發中心", "RR40": "管理資訊部", "RR60": "集團系統開發部", "RR70": "產品服務開發部", "KV00": "前瞻研究室", "MM00": "集團品牌行銷中心", "MM10": "品牌行銷與公關部", "MM70": "品牌設計部", "KA00": "行政管理中心", "KA10": "人才營運部", "KA20": "財務管理部", "KA30": "會計管理部", "KA40": "總務行政部", "KL00": "法務部", "KU00": "稽核室", "TW00": "營運長室", "KC00": "執行長室", "RO00": "研發長室", "PO00": "產品長室", "MO00": "行銷長室", "FO00": "財務長室", "JP00": "日本子公司", "UU00": "美國子公司", "SG00": "新加坡子公司", "CC00": "長沙子公司"};
+function buLabel(code) {
+  if (!code) return '';
+  const name = BU_MAP[code];
+  return name ? `${code} <span style="color:var(--text-2);font-size:9px">${name}</span>` : code;
+}
+
+// === Drill-down data ===
+const FULL_DETAILS = {"部門": [{"code": "5817", "name": "營業成本-廣告費", "sheet": "C2S", "mar26_total": 4791635, "apr26_total": 3287852, "mom_diff": -1503783, "mom_pct": -0.31383504795336037, "yoy_pct": -0.19414147816498148, "details": [{"BU": "NB10", "desc": "On-Google", "mar26": 2353069, "apr26": 1542419, "diff": -810650, "apr25": 1867118}, {"BU": "NB10", "desc": "Off-廣告", "mar26": 2438566, "apr26": 1745433, "diff": -693133, "apr25": 2212819}]}, {"code": "6235", "name": "管理-勞務費用", "sheet": "E20S", "mar26_total": 668790, "apr26_total": 1133369, "mom_diff": 464579, "mom_pct": 0.6946560205744703, "yoy_pct": -0.34287468589432135, "details": [{"BU": "KA20", "desc": "母-勤業-IPO", "mar26": 20000, "apr26": 190000, "diff": 170000, "apr25": 177500}, {"BU": "KL00", "desc": "法說會", "mar26": 0, "apr26": 160000, "diff": 160000, "apr25": 0}, {"BU": "KA40", "desc": "北辦裝修", "mar26": 0, "apr26": 110000, "diff": 110000, "apr25": null}, {"BU": "DA20", "desc": "SEO行銷費用", "mar26": 99485, "apr26": 47945, "diff": -51540, "apr25": 28453}, {"BU": "KA20", "desc": "勞務費用", "mar26": 0, "apr26": 32000, "diff": 32000, "apr25": null}, {"BU": "RR70", "desc": "網頁維護費", "mar26": 21420, "apr26": 45780, "diff": 24360, "apr25": 24850}]}, {"code": "6117", "name": "銷售-廣告費", "sheet": "E8S", "mar26_total": 1548665, "apr26_total": 1111079, "mom_diff": -437586, "mom_pct": -0.28255691192091253, "yoy_pct": -0.4197702746103572, "details": [{"BU": "WF00", "desc": "On-Google", "mar26": 424571, "apr26": -327434, "diff": -752005, "apr25": 115179}, {"BU": "WF20", "desc": "On-Google", "mar26": 117743, "apr26": 542334, "diff": 424591, "apr25": 274546}, {"BU": "DA00", "desc": "On-Google", "mar26": -47861, "apr26": -286326, "diff": -238465, "apr25": 136352}, {"BU": "MM10", "desc": "參展", "mar26": 0, "apr26": 96000, "diff": 96000, "apr25": null}, {"BU": "KC00", "desc": "Off-NA-Other", "mar26": 91626, "apr26": 0, "diff": -91626, "apr25": 0}, {"BU": "DA20", "desc": "On-Google", "mar26": 452495, "apr26": 404633, "diff": -47862, "apr25": 843982}, {"BU": "SG00", "desc": "Google Ads", "mar26": 0, "apr26": 42529, "diff": 42529, "apr25": null}, {"BU": "SG00", "desc": "On-Google", "mar26": 39578, "apr26": 0, "diff": -39578, "apr25": null}, {"BU": "WF20", "desc": "On-FB", "mar26": 37303, "apr26": 0, "diff": -37303, "apr25": 0}, {"BU": "WF20", "desc": "廣告費", "mar26": 0, "apr26": 35000, "diff": 35000, "apr25": null}]}, {"code": "5835", "name": "營業成本-勞務費用", "sheet": "C3S", "mar26_total": 352500, "apr26_total": 27500, "mom_diff": -325000, "mom_pct": -0.9219858156028369, "yoy_pct": -0.7255927197253932, "details": [{"BU": "NB10", "desc": "Off-廣告-專案", "mar26": 352500, "apr26": 27500, "diff": -325000, "apr25": 65633}]}, {"code": "6113", "name": "銷售-旅費", "sheet": "E4S", "mar26_total": 32306, "apr26_total": 286392, "mom_diff": 254086, "mom_pct": 7.864978641738377, "yoy_pct": 1.1234040660171716, "details": [{"BU": "UU00", "desc": "安東尼", "mar26": 0, "apr26": 161762, "diff": 161762, "apr25": null}, {"BU": "KC00", "desc": "蘇柏州", "mar26": 348197, "apr26": 223859, "diff": -124338, "apr25": 220160}, {"BU": "RO00", "desc": "林文瑋", "mar26": 38600, "apr26": 0, "diff": -38600, "apr25": 0}, {"BU": "SG00", "desc": "蘇肯樂", "mar26": 4046, "apr26": 39749, "diff": 35703, "apr25": null}, {"BU": "NB00", "desc": "林文瑋", "mar26": 0, "apr26": 31687, "diff": 31687, "apr25": null}, {"BU": "KC00", "desc": "傅承永", "mar26": 29574, "apr26": 0, "diff": -29574, "apr25": null}]}, {"code": "6213", "name": "管理-旅費", "sheet": "E4S", "mar26_total": 431700, "apr26_total": 260979, "mom_diff": -170721, "mom_pct": -0.39546212647671997, "yoy_pct": -0.1367058543330268, "details": [{"BU": "UU00", "desc": "安東尼", "mar26": 0, "apr26": 161762, "diff": 161762, "apr25": null}, {"BU": "KC00", "desc": "蘇柏州", "mar26": 348197, "apr26": 223859, "diff": -124338, "apr25": 220160}, {"BU": "RO00", "desc": "林文瑋", "mar26": 38600, "apr26": 0, "diff": -38600, "apr25": 0}, {"BU": "SG00", "desc": "蘇肯樂", "mar26": 4046, "apr26": 39749, "diff": 35703, "apr25": null}, {"BU": "NB00", "desc": "林文瑋", "mar26": 0, "apr26": 31687, "diff": 31687, "apr25": null}, {"BU": "KC00", "desc": "傅承永", "mar26": 29574, "apr26": 0, "diff": -29574, "apr25": null}, {"BU": "DA10", "desc": "王信捷", "mar26": 0, "apr26": 11194, "diff": 11194, "apr25": 0}, {"BU": "RR40", "desc": "蕭騰耀", "mar26": 0, "apr26": 10909, "diff": 10909, "apr25": 2822}, {"BU": "SG00", "desc": "馮佳音", "mar26": 10101, "apr26": 0, "diff": -10101, "apr25": 0}, {"BU": "AA00", "desc": "鄭琪融", "mar26": 0, "apr26": 9522, "diff": 9522, "apr25": 7822}]}, {"code": "6219", "name": "管理-保險費", "sheet": "E10S", "mar26_total": 480166, "apr26_total": 314094, "mom_diff": -166072, "mom_pct": -0.34586372212943023, "yoy_pct": 0.08859706582654897, "details": [{"BU": "KA10", "desc": "補充保費", "mar26": 157021, "apr26": 1726, "diff": -155295, "apr25": 0}, {"BU": "KA40", "desc": "火災", "mar26": 11183, "apr26": 0, "diff": -11183, "apr25": 3342}]}, {"code": "5810", "name": "營業成本-薪資支出", "sheet": "C9S", "mar26_total": 547398, "apr26_total": 668395, "mom_diff": 120997, "mom_pct": 0.22104026686250225, "yoy_pct": -0.032847824325419335, "details": [{"BU": "NB00", "desc": "績效獎金", "mar26": 0, "apr26": 98832, "diff": 98832, "apr25": 90708}, {"BU": "WF00", "desc": "薪資", "mar26": 226163, "apr26": 247263, "diff": 21100, "apr25": 222953}]}, {"code": "6217", "name": "管理-廣告費", "sheet": "E8S", "mar26_total": 94721, "apr26_total": 3095, "mom_diff": -91626, "mom_pct": -0.9673250915847594, "yoy_pct": -0.5637158161826896, "details": [{"BU": "WF00", "desc": "On-Google", "mar26": 424571, "apr26": -327434, "diff": -752005, "apr25": 115179}, {"BU": "WF20", "desc": "On-Google", "mar26": 117743, "apr26": 542334, "diff": 424591, "apr25": 274546}, {"BU": "DA00", "desc": "On-Google", "mar26": -47861, "apr26": -286326, "diff": -238465, "apr25": 136352}, {"BU": "MM10", "desc": "參展", "mar26": 0, "apr26": 96000, "diff": 96000, "apr25": null}, {"BU": "KC00", "desc": "Off-NA-Other", "mar26": 91626, "apr26": 0, "diff": -91626, "apr25": 0}, {"BU": "DA20", "desc": "On-Google", "mar26": 452495, "apr26": 404633, "diff": -47862, "apr25": 843982}, {"BU": "SG00", "desc": "Google Ads", "mar26": 0, "apr26": 42529, "diff": 42529, "apr25": null}, {"BU": "SG00", "desc": "On-Google", "mar26": 39578, "apr26": 0, "diff": -39578, "apr25": null}, {"BU": "WF20", "desc": "On-FB", "mar26": 37303, "apr26": 0, "diff": -37303, "apr25": 0}, {"BU": "WF20", "desc": "廣告費", "mar26": 0, "apr26": 35000, "diff": 35000, "apr25": null}]}, {"code": "6216", "name": "管理-修繕費", "sheet": "E7S", "mar26_total": 31500, "apr26_total": 97790, "mom_diff": 66290, "mom_pct": 2.1044444444444443, "yoy_pct": -0.6483942414174972, "details": [{"BU": "KA40", "desc": "公務車", "mar26": 0, "apr26": 91600, "diff": 91600, "apr25": null}, {"BU": "KA40", "desc": "辦公設備", "mar26": 31500, "apr26": 6190, "diff": -25310, "apr25": 13150}, {"BU": "RR40", "desc": "辦公設備", "mar26": 15000, "apr26": 0, "diff": -15000, "apr25": 0}, {"BU": "RR40", "desc": "資訊設備", "mar26": 0, "apr26": 5000, "diff": 5000, "apr25": null}, {"BU": "RR40", "desc": "電腦", "mar26": 4286, "apr26": 0, "diff": -4286, "apr25": 0}]}, {"code": "6212", "name": "管理-文具用品", "sheet": "E3S", "mar26_total": 53902, "apr26_total": 0, "mom_diff": -53902, "mom_pct": -1.0, "yoy_pct": -1.0, "details": [{"BU": "KC00", "desc": "其他", "mar26": 47300, "apr26": 0, "diff": -47300, "apr25": null}, {"BU": "KA40", "desc": "影印費-南辦", "mar26": 3348, "apr26": 0, "diff": -3348, "apr25": 0}]}, {"code": "6288", "name": "管理-其他費用", "sheet": "E25S", "mar26_total": 142407, "apr26_total": 177442, "mom_diff": 35035, "mom_pct": 0.2460202096807039, "yoy_pct": -0.10240936429810761, "details": [{"BU": "KA40", "desc": "其他費用", "mar26": 0, "apr26": 39052, "diff": 39052, "apr25": null}, {"BU": "KA40", "desc": "辦公室耗品", "mar26": 0, "apr26": 34686, "diff": 34686, "apr25": 13632}, {"BU": "KA40", "desc": "管理費-南辦", "mar26": 30897, "apr26": 0, "diff": -30897, "apr25": 34265}, {"BU": "MM00", "desc": "Other-申請規費/年費", "mar26": 15000, "apr26": 0, "diff": -15000, "apr25": null}, {"BU": "KA40", "desc": "辦公室耗品-零食飲品-北辦", "mar26": 8395, "apr26": 0, "diff": -8395, "apr25": 10773}, {"BU": "KA40", "desc": "辦公室耗品-零食飲品-南辦", "mar26": 13409, "apr26": 21608, "diff": 8199, "apr25": 23832}, {"BU": "KL00", "desc": "Other-申請規費/年費", "mar26": 4000, "apr26": 0, "diff": -4000, "apr25": 12000}, {"BU": "KU00", "desc": "Other-申請規費/年費", "mar26": 2000, "apr26": 0, "diff": -2000, "apr25": 0}]}, {"code": "6313", "name": "研發-旅費", "sheet": "E4S", "mar26_total": 8837, "apr26_total": 43170, "mom_diff": 34333, "mom_pct": 3.885142016521444, "yoy_pct": 0.5085438725233253, "details": [{"BU": "UU00", "desc": "安東尼", "mar26": 0, "apr26": 161762, "diff": 161762, "apr25": null}, {"BU": "KC00", "desc": "蘇柏州", "mar26": 348197, "apr26": 223859, "diff": -124338, "apr25": 220160}, {"BU": "RO00", "desc": "林文瑋", "mar26": 38600, "apr26": 0, "diff": -38600, "apr25": 0}, {"BU": "SG00", "desc": "蘇肯樂", "mar26": 4046, "apr26": 39749, "diff": 35703, "apr25": null}, {"BU": "NB00", "desc": "林文瑋", "mar26": 0, "apr26": 31687, "diff": 31687, "apr25": null}, {"BU": "KC00", "desc": "傅承永", "mar26": 29574, "apr26": 0, "diff": -29574, "apr25": null}, {"BU": "DA10", "desc": "王信捷", "mar26": 0, "apr26": 11194, "diff": 11194, "apr25": 0}, {"BU": "RR40", "desc": "蕭騰耀", "mar26": 0, "apr26": 10909, "diff": 10909, "apr25": 2822}, {"BU": "SG00", "desc": "馮佳音", "mar26": 10101, "apr26": 0, "diff": -10101, "apr25": 0}, {"BU": "AA00", "desc": "鄭琪融", "mar26": 0, "apr26": 9522, "diff": 9522, "apr25": 7822}]}, {"code": "6389", "name": "研發-雜項購置", "sheet": "E26S", "mar26_total": 1047, "apr26_total": 31449, "mom_diff": 30402, "mom_pct": 29.03724928366762, "yoy_pct": 0.8775522388059701, "details": [{"BU": "RR40", "desc": "辦公設備", "mar26": 1047, "apr26": 25571, "diff": 24524, "apr25": 1406}, {"BU": "RR40", "desc": "資訊設備", "mar26": 0, "apr26": 5878, "diff": 5878, "apr25": 15344}, {"BU": "KA40", "desc": "辦公設備", "mar26": 3355, "apr26": 0, "diff": -3355, "apr25": 0}]}, {"code": "6111", "name": "銷售-租金支出", "sheet": "E2S", "mar26_total": 28571, "apr26_total": 0, "mom_diff": -28571, "mom_pct": -1.0, "yoy_pct": null, "details": [{"BU": "KA40", "desc": "租金-北辦", "mar26": 345488, "apr26": 131202, "diff": -214286, "apr25": 339286}, {"BU": "KA40", "desc": "辦公室租金", "mar26": 0, "apr26": 214286, "diff": 214286, "apr25": null}, {"BU": "TR10", "desc": "租金-新創園區", "mar26": 28571, "apr26": 0, "diff": -28571, "apr25": null}, {"BU": "KA40", "desc": "Other-影印機(南辦)", "mar26": 2600, "apr26": 0, "diff": -2600, "apr25": 0}, {"BU": "KA40", "desc": "Other-影印機(北辦)", "mar26": 2600, "apr26": 0, "diff": -2600, "apr25": 0}]}], "日本": [{"code": "6135", "name": "銷售-勞務費用", "sheet": "E20S", "mar26_total": 772000, "apr26_total": 1860000, "mom_diff": 1088000, "mom_pct": 1.4093264248704662, "yoy_pct": 0.1570042299079373, "details": [{"BU": "JP00", "desc": "勞務費", "mar26": 0, "apr26": 1800000, "diff": 1800000, "apr25": null}, {"BU": "JP00", "desc": "FAE", "mar26": 712000, "apr26": 0, "diff": -712000, "apr25": null}, {"BU": "JP00", "desc": "住民稅", "mar26": 0, "apr26": 200000, "diff": 200000, "apr25": null}, {"BU": "JP00", "desc": "勞務費", "mar26": 18110, "apr26": 146000, "diff": 127890, "apr25": null}]}, {"code": "6110", "name": "銷售-薪資支出", "sheet": "E1S", "mar26_total": 1513863, "apr26_total": 2010262, "mom_diff": 496399, "mom_pct": 0.3279021945843184, "yoy_pct": -0.45765469193000935, "details": [{"BU": "JP00", "desc": "薪資", "mar26": 1513863, "apr26": 2010262, "diff": 496399, "apr25": 2586609}]}, {"code": "6235", "name": "管理-勞務費用", "sheet": "E20S", "mar26_total": 138110, "apr26_total": 441000, "mom_diff": 302890, "mom_pct": 2.1931069437404966, "yoy_pct": -0.5771609377247231, "details": [{"BU": "JP00", "desc": "勞務費", "mar26": 0, "apr26": 1800000, "diff": 1800000, "apr25": null}, {"BU": "JP00", "desc": "FAE", "mar26": 712000, "apr26": 0, "diff": -712000, "apr25": null}, {"BU": "JP00", "desc": "住民稅", "mar26": 0, "apr26": 200000, "diff": 200000, "apr25": null}, {"BU": "JP00", "desc": "勞務費", "mar26": 18110, "apr26": 146000, "diff": 127890, "apr25": null}]}, {"code": "6117", "name": "銷售-廣告費", "sheet": "E8S", "mar26_total": 120000, "apr26_total": 0, "mom_diff": -120000, "mom_pct": -1.0, "yoy_pct": -1.0, "details": [{"BU": "JP00", "desc": "BOXIL廣告費", "mar26": 120000, "apr26": 0, "diff": -120000, "apr25": 120000}]}, {"code": "6119", "name": "銷售-保險費", "sheet": "E10S", "mar26_total": 107786, "apr26_total": 142235, "mom_diff": 34449, "mom_pct": 0.3196055146308426, "yoy_pct": -0.17378727062554822, "details": [{"BU": "JP00", "desc": "保險費", "mar26": 107786, "apr26": 142235, "diff": 34449, "apr25": 139898}]}, {"code": "6120", "name": "銷售-交際費", "sheet": "E11S", "mar26_total": 16476, "apr26_total": 50109, "mom_diff": 33633, "mom_pct": 2.041332847778587, "yoy_pct": -0.5998418820823651, "details": [{"BU": "JP00", "desc": "仲井 曉", "mar26": 50109, "apr26": 0, "diff": -50109, "apr25": 0}]}, {"code": "6113", "name": "銷售-旅費", "sheet": "E4S", "mar26_total": 43227, "apr26_total": 68991, "mom_diff": 25764, "mom_pct": 0.5960163786522312, "yoy_pct": 0.36494213077455734, "details": [{"BU": "JP00", "desc": "員工通勤費", "mar26": 43227, "apr26": 68991, "diff": 25764, "apr25": 50545}]}, {"code": "6189", "name": "銷售-雜項購置", "sheet": "E26S", "mar26_total": 0, "apr26_total": 20832, "mom_diff": 20832, "mom_pct": null, "yoy_pct": 13.901287553648068, "details": [{"BU": "JP00", "desc": "辦公設備", "mar26": 0, "apr26": 21636, "diff": 21636, "apr25": null}, {"BU": "JP00", "desc": "辦公設備", "mar26": 0, "apr26": 20832, "diff": 20832, "apr25": null}]}, {"code": "6112", "name": "銷售-文具用品", "sheet": "E3S", "mar26_total": 0, "apr26_total": 11060, "mom_diff": 11060, "mom_pct": null, "yoy_pct": -0.0837544528208102, "details": [{"BU": "JP00", "desc": "名片", "mar26": 10000, "apr26": 0, "diff": -10000, "apr25": 0}, {"BU": "JP00", "desc": "文具", "mar26": 1060, "apr26": 0, "diff": -1060, "apr25": 0}]}, {"code": "6290", "name": "管理-手續費", "sheet": "E27S", "mar26_total": 20000, "apr26_total": 30400, "mom_diff": 10400, "mom_pct": 0.52, "yoy_pct": 0.45873320537428025, "details": [{"BU": "JP00", "desc": "網銀服務手續費", "mar26": 13100, "apr26": 26200, "diff": 13100, "apr25": 9600}, {"BU": "JP00", "desc": "函證發行手續費", "mar26": 2000, "apr26": 0, "diff": -2000, "apr25": null}, {"BU": "JP00", "desc": "手續費", "mar26": 4900, "apr26": 4200, "diff": -700, "apr25": 11240}]}], "長沙": [], "美國": [{"code": "6232", "name": "管理-網路服務費", "sheet": "E19S", "mar26_total": 11191.31, "apr26_total": 199.43, "mom_diff": -10991.88, "mom_pct": -0.9821799235299531, "yoy_pct": -0.47295118792779933, "details": [{"BU": "CC00", "desc": "AWIN", "mar26": 10122.92, "apr26": 135.94999999999982, "diff": -9986.970000000001, "apr25": 118.4}, {"BU": "UU00", "desc": "AWIN", "mar26": 1043.5900000000001, "apr26": 0, "diff": -1043.5900000000001, "apr25": null}]}, {"code": "6217", "name": "管理-廣告費", "sheet": "E8S", "mar26_total": 13814.68, "apr26_total": 9237.62, "mom_diff": -4577.0599999999995, "mom_pct": -0.3313185683635089, "yoy_pct": -0.30717572870291476, "details": [{"BU": "DA00", "desc": "Microsoft Ads", "mar26": 13814.68, "apr26": 9237.62, "diff": -4577.0599999999995, "apr25": 13333.28}]}, {"code": "6235", "name": "管理-勞務費用", "sheet": "E20S", "mar26_total": 2358.34, "apr26_total": 3546.34, "mom_diff": 1188.0, "mom_pct": 0.5037441590271122, "yoy_pct": 0.4769339691397872, "details": [{"BU": "WF00", "desc": "Accountable", "mar26": 0, "apr26": 1188, "diff": 1188, "apr25": null}]}, {"code": "6288", "name": "管理-其他費用", "sheet": "E25S", "mar26_total": 465.95, "apr26_total": 867.87, "mom_diff": 401.92, "mom_pct": 0.8625818220839147, "yoy_pct": 0.916293139614476, "details": [{"BU": "UU00", "desc": "ADP PAYROLL FEES", "mar26": 465.95, "apr26": 867.8700000000001, "diff": 401.92000000000013, "apr25": 452.89}]}], "新加坡": [{"code": "6235", "name": "管理-勞務費用", "sheet": "E20S", "mar26_total": 593.03, "apr26_total": 13591.92, "mom_diff": 12998.89, "mom_pct": 21.91944758275298, "yoy_pct": 0.43640904080664267, "details": [{"BU": "SG00", "desc": "會計師", "mar26": 538.78, "apr26": 13537.670000000002, "diff": 12998.890000000001, "apr25": 7822.330000000001}]}, {"code": "6117", "name": "銷售-廣告費", "sheet": "E8S", "mar26_total": 0, "apr26_total": 2395.67, "mom_diff": 2395.67, "mom_pct": null, "yoy_pct": -0.8076524098949008, "details": [{"BU": "SG00", "desc": "展會", "mar26": 2395.67, "apr26": 0, "diff": -2395.67, "apr25": null}]}, {"code": "6290", "name": "管理-手續費", "sheet": "E27S", "mar26_total": 465.45, "apr26_total": 1207.41, "mom_diff": 741.96, "mom_pct": 1.5940702545923302, "yoy_pct": 37.94870967741936, "details": [{"BU": "SG00", "desc": "Stripe手續費", "mar26": 366.65999999999997, "apr26": 955.2800000000001, "diff": 588.6200000000001, "apr25": null}, {"BU": "SG00", "desc": "Stripe費用", "mar26": 93.75999999999999, "apr26": 246.29000000000002, "diff": 152.53000000000003, "apr25": null}]}, {"code": "6188", "name": "銷售-其他費用", "sheet": "E25S", "mar26_total": 825.2, "apr26_total": 288.44, "mom_diff": -536.76, "mom_pct": -0.6504604944255937, "yoy_pct": -0.6326915240423798, "details": [{"BU": "SG00", "desc": "Wework", "mar26": 825.2, "apr26": 288.44, "diff": -536.76, "apr25": 785.28}, {"BU": "SG00", "desc": "Account Fee", "mar26": 31, "apr26": 0, "diff": -31, "apr25": null}]}, {"code": "6113", "name": "銷售-旅費", "sheet": "E4S", "mar26_total": 293.81, "apr26_total": 0, "mom_diff": -293.81, "mom_pct": -1.0, "yoy_pct": null, "details": [{"BU": "SG00", "desc": "Chuin yee", "mar26": 293.81, "apr26": 0, "diff": -293.81, "apr25": null}]}, {"code": "6288", "name": "管理-其他費用", "sheet": "E25S", "mar26_total": 57, "apr26_total": 26, "mom_diff": -31, "mom_pct": -0.543859649122807, "yoy_pct": null, "details": [{"BU": "SG00", "desc": "Wework", "mar26": 825.2, "apr26": 288.44, "diff": -536.76, "apr25": 785.28}, {"BU": "SG00", "desc": "Account Fee", "mar26": 31, "apr26": 0, "diff": -31, "apr25": null}]}]};
+
+// expand/collapse account row
+function toggleDrillDown(rowEl, comp, code) {
+  const next = rowEl.nextElementSibling;
+  if (next && next.classList.contains('drill-row')) {
+    next.remove();
+    rowEl.classList.remove('expanded');
+    return;
+  }
+  const item = (FULL_DETAILS[comp] || []).find(x => x.code === code);
+  if (!item || !item.details || !item.details.length) {
+    alert('此科目無細項資料 (S 表中找不到對應)');
+    return;
+  }
+  rowEl.classList.add('expanded');
+  const tr = document.createElement('tr');
+  tr.className = 'drill-row';
+  const td = document.createElement('td');
+  td.colSpan = rowEl.children.length;
+  td.style.padding = '0';
+  td.style.background = 'rgba(59, 130, 246, 0.04)';
+  
+  let html = `<div style="padding:14px 24px; border-left:3px solid var(--info);">
+    <div style="font-size:11px; color:var(--text-2); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">
+      ↳ Drill-down · ${code} ${item.name} 細項 (Top ${Math.min(item.details.length, 8)})
+    </div>
+    <table style="width:100%; font-size:11px;">
+      <thead><tr>
+        <th style="text-align:left;color:var(--text-2);padding:6px 4px;border-bottom:1px solid var(--border);">BU</th>
+        <th style="text-align:left;color:var(--text-2);padding:6px 4px;border-bottom:1px solid var(--border);">品項描述</th>
+        <th style="text-align:right;color:var(--text-2);padding:6px 4px;border-bottom:1px solid var(--border);">3月</th>
+        <th style="text-align:right;color:var(--text-2);padding:6px 4px;border-bottom:1px solid var(--border);">4月</th>
+        <th style="text-align:right;color:var(--text-2);padding:6px 4px;border-bottom:1px solid var(--border);">Δ</th>
+        <th style="text-align:right;color:var(--text-2);padding:6px 4px;border-bottom:1px solid var(--border);">2025/04</th>
+      </tr></thead>
+      <tbody>`;
+  item.details.slice(0, 8).forEach(d => {
+    const diffColor = d.diff > 0 ? 'var(--danger)' : 'var(--accent)';
+    const apr25 = (d.apr25 !== null && d.apr25 !== undefined) ? Number(d.apr25).toLocaleString() : '<span style="color:var(--text-2)">N/A</span>';
+    html += `<tr>
+      <td style="padding:6px 4px;color:var(--text-1);white-space:nowrap;">${buLabel(d.BU)}</td>
+      <td style="padding:6px 4px;color:var(--text-0);">${d.desc}</td>
+      <td style="padding:6px 4px;text-align:right;font-variant-numeric:tabular-nums;">${Number(d.mar26).toLocaleString()}</td>
+      <td style="padding:6px 4px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;">${Number(d.apr26).toLocaleString()}</td>
+      <td style="padding:6px 4px;text-align:right;font-variant-numeric:tabular-nums;color:${diffColor};font-weight:600;">${d.diff > 0 ? '+' : ''}${Number(d.diff).toLocaleString()}</td>
+      <td style="padding:6px 4px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text-2);">${apr25}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  td.innerHTML = html;
+  tr.appendChild(td);
+  rowEl.parentNode.insertBefore(tr, rowEl.nextSibling);
+}
+
+</script>
+
+</body>
+</html>
